@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delhi NCR Pollution Sources Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #1a2980, #26d0ce);
+            color: white;
+            padding: 1.2rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+            max-width: 800px;
+        }
+        
+        .map-container {
+            flex: 1;
+            display: flex;
+            position: relative;
+        }
+        
+        #map {
+            flex: 1;
+            height: 100%;
+            width: 100%;
+        }
+        
+        .controls-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            width: 320px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        
+        .controls-panel h3 {
+            margin-bottom: 15px;
+            color: #1a2980;
+            border-bottom: 2px solid #26d0ce;
+            padding-bottom: 8px;
+        }
+        
+        .source-controls {
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .control-group input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .source-icon {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .vehicular-icon { background-color: #FF5252; }
+        .burning-icon { background-color: #FF9800; }
+        .industrial-icon { background-color: #4CAF50; }
+        
+        .pollution-level {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        .low-pollution { background-color: #4CAF50; color: white; }
+        .medium-pollution { background-color: #FFC107; color: #333; }
+        .high-pollution { background-color: #F44336; color: white; }
+        .very-high-pollution { background-color: #9C27B0; color: white; }
+        
+        .slider-container {
+            margin-top: 10px;
+        }
+        
+        .slider-container label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .slider-value {
+            float: right;
+            font-weight: bold;
+            color: #1a2980;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #1a2980;
+            cursor: pointer;
+        }
+        
+        .legend {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        
+        .data-info {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 0.85rem;
+        }
+        
+        .data-source {
+            font-style: italic;
+            color: #666;
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+        
+        .info-window {
+            max-width: 300px;
+        }
+        
+        .info-window h4 {
+            color: #1a2980;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        
+        .info-window p {
+            margin-bottom: 5px;
+        }
+        
+        .pollution-stats {
+            background: #f5f5f5;
+            padding: 8px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .pollution-stats div {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        
+        .status-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            flex-direction: column;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #1a2980;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .factory-icon {
+            font-size: 18px;
+            color: #4CAF50;
+        }
+        
+        .burning-icon-marker {
+            font-size: 18px;
+            color: #FF9800;
+        }
+        
+        @media (max-width: 768px) {
+            .controls-panel {
+                width: 280px;
+                top: 10px;
+                left: 10px;
+                padding: 12px;
+            }
+            
+            .status-bar {
+                bottom: 10px;
+                width: 90%;
+                font-size: 0.9rem;
+            }
+            
+            header {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div>
+                    <h1>Delhi NCR Pollution Sources Visualization</h1>
+                    <p class="subtitle">Track vehicular traffic, agricultural burning, and industrial emissions across Delhi NCR. Toggle layers to analyze different pollution sources.</p>
+                </div>
+            </div>
+        </header>
+        
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <div class="controls-panel">
+                <h3>Pollution Source Controls</h3>
+                
+                <div class="source-controls">
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="vehicular-toggle" checked>
+                            <span class="source-icon vehicular-icon"></span>
+                            Vehicular Pollution (Traffic)
+                        </label>
+                        <div class="slider-container">
+                            <label>Traffic Opacity: <span class="slider-value" id="traffic-opacity-value">70%</span></label>
+                            <input type="range" id="traffic-opacity" min="0" max="100" value="70">
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="burning-toggle" checked>
+                            <span class="source-icon burning-icon"></span>
+                            Agricultural/Burning Spots
+                        </label>
+                        <div class="slider-container">
+                            <label>Burning Intensity: <span class="slider-value" id="burning-intensity-value">Medium</span></label>
+                            <input type="range" id="burning-intensity" min="0" max="100" value="50">
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="industrial-toggle" checked>
+                            <span class="source-icon industrial-icon"></span>
+                            Industrial Emissions
+                        </label>
+                        <div class="slider-container">
+                            <label>Emission Threshold: <span class="slider-value" id="emission-threshold-value">Medium</span></label>
+                            <input type="range" id="emission-threshold" min="0" max="200" value="50">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="legend">
+                    <h4>Pollution Level Legend</h4>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #4CAF50;"></div>
+                        <span>Low Pollution</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #FFC107;"></div>
+                        <span>Medium Pollution</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #F44336;"></div>
+                        <span>High Pollution</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #9C27B0;"></div>
+                        <span>Very High Pollution</span>
+                    </div>
+                </div>
+                
+                <div class="data-info">
+                    <p><strong>Data Sources:</strong></p>
+                    <p>• Vehicular: Google Traffic Layer API</p>
+                    <p>• Burning: Simulated MODIS Fire Data</p>
+                    <p>• Industrial: Delhi Industries Dataset (500+ factories)</p>
+                    <div class="data-source">Data last updated: November 2023</div>
+                </div>
+            </div>
+            
+            <div class="status-bar">
+                <div class="status-dot" style="background-color: #4CAF50;"></div>
+                <span id="status-text">Map Loaded: Displaying all pollution sources</span>
+            </div>
+            
+            <div class="loading-overlay" id="loading-overlay">
+                <div class="spinner"></div>
+                <p>Loading pollution data...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBd_-_Jy0INKWR4ilfGXwDZ7kqA0g0GtBw&callback=initMap" async defer></script>
+    
+    <script>
+        // Global variables
+        let map;
+        let trafficLayer;
+        let burningMarkers = [];
+        let industrialMarkers = [];
+        let infoWindow;
+        
+        // Delhi NCR bounding box coordinates
+        const DELHI_BOUNDS = {
+            north: 28.9,
+            south: 28.4,
+            west: 76.8,
+            east: 77.5
+        };
+        
+        // Known pollution hotspots
+        const pollutionHotspots = [
+            { name: "Sirhaul Toll (Gurugram)", lat: 28.5036, lng: 77.0862, desc: "Major truck entry point with high idling emissions", type: "vehicular", level: "high" },
+            { name: "Ghazipur Border", lat: 28.6321, lng: 77.3399, desc: "UP supply chain entry with heavy truck congestion", type: "vehicular", level: "high" },
+            { name: "ITO Intersection", lat: 28.6293, lng: 77.2410, desc: "Central Delhi congestion hotspot", type: "vehicular", level: "medium" },
+            { name: "Anand Vihar ISBT", lat: 28.6467, lng: 77.3149, desc: "Transport hub with buses and vehicles", type: "vehicular", level: "high" },
+            { name: "Ashram Chowk", lat: 28.5714, lng: 77.2589, desc: "South Delhi bottleneck with peak hour congestion", type: "vehicular", level: "medium" }
+        ];
+        
+        // Sample industrial data from the provided dataset (simplified for demo)
+        // In a real implementation, you would parse the entire Excel file
+        const industrialData = [
+            { name: "Indraprastha Power Generation Co Ltd", lat: 28.63, lng: 77.24, pm25: 250, so2: 1500, nox: 1200, category: "Red" },
+            { name: "Shiva Iron and Brass Works", lat: 28.7302, lng: 77.1643, pm25: 45, so2: 20, nox: 15, category: "Red" },
+            { name: "Ajanta Iron and Steel Co", lat: 28.6756, lng: 77.2905, pm25: 45, so2: 20, nox: 15, category: "Red" },
+            { name: "Grover Steel Pvt Rolling Mills Ltd", lat: 28.62, lng: 77.18, pm25: 45, so2: 20, nox: 15, category: "Red" },
+            { name: "Prem Enamel Metal Factory", lat: 28.68, lng: 77.17, pm25: 45, so2: 20, nox: 15, category: "Red" },
+            { name: "Shahadra Aluminium Factory", lat: 28.67, lng: 77.29, pm25: 15, so2: 10, nox: 10, category: "Red" },
+            { name: "Chawla Brass and Aluminium Co", lat: 28.67, lng: 77.31, pm25: 15, so2: 10, nox: 10, category: "Red" },
+            { name: "Delhi Printing Press", lat: 28.6449, lng: 77.1996, pm25: 0.5, so2: 0.5, nox: 0.5, category: "Orange" },
+            { name: "Govt of India Press", lat: 28.6366, lng: 77.2263, pm25: 1.0, so2: 1.0, nox: 1.0, category: "Orange" },
+            { name: "The Stateman House", lat: 28.6304, lng: 77.2177, pm25: 0.1, so2: 0.1, nox: 0.1, category: "Green" }
+        ];
+        
+        // Simulated burning spots (in a real app, this would come from MODIS API)
+        const burningSpots = [
+            { lat: 28.45, lng: 77.02, intensity: 0.8, type: "agricultural", date: "2023-11-15" },
+            { lat: 28.52, lng: 77.35, intensity: 0.6, type: "agricultural", date: "2023-11-14" },
+            { lat: 28.68, lng: 77.12, intensity: 0.4, type: "garbage", date: "2023-11-16" },
+            { lat: 28.75, lng: 77.25, intensity: 0.7, type: "agricultural", date: "2023-11-13" },
+            { lat: 28.58, lng: 77.18, intensity: 0.5, type: "garbage", date: "2023-11-16" },
+            { lat: 28.63, lng: 77.08, intensity: 0.9, type: "agricultural", date: "2023-11-12" }
+        ];
+        
+        // Initialize the map
+        function initMap() {
+            // Create map centered on Delhi
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 28.6139, lng: 77.2090 },
+                zoom: 11,
+                mapTypeId: 'roadmap',
+                restriction: {
+                    latLngBounds: DELHI_BOUNDS,
+                    strictBounds: false
+                },
+                styles: [
+                    {
+                        featureType: "poi",
+                        elementType: "labels",
+                        stylers: [{ visibility: "off" }]
+                    }
+                ]
+            });
+            
+            // Initialize info window
+            infoWindow = new google.maps.InfoWindow();
+            
+            // Enable traffic layer
+            trafficLayer = new google.maps.TrafficLayer();
+            trafficLayer.setMap(map);
+            
+            // Add pollution hotspots
+            addPollutionHotspots();
+            
+            // Add industrial emissions
+            addIndustrialEmissions();
+            
+            // Add burning spots
+            addBurningSpots();
+            
+            // Set up event listeners for controls
+            setupControls();
+            
+            // Hide loading overlay
+            setTimeout(() => {
+                document.getElementById('loading-overlay').style.display = 'none';
+            }, 1500);
+            
+            // Update status
+            updateStatus("Map loaded with all pollution sources");
+        }
+        
+        // Add pollution hotspots to the map
+        function addPollutionHotspots() {
+            pollutionHotspots.forEach((spot) => {
+                const marker = new google.maps.Marker({
+                    position: { lat: spot.lat, lng: spot.lng },
+                    map: map,
+                    title: spot.name,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 8,
+                        fillColor: '#FF5252',
+                        fillOpacity: 0.7,
+                        strokeColor: '#FFFFFF',
+                        strokeWeight: 2
+                    },
+                    zIndex: 100
+                });
+                
+                // Add click listener
+                marker.addListener('click', () => {
+                    const content = `
+                        <div class="info-window">
+                            <h4>${spot.name}</h4>
+                            <p><strong>Type:</strong> ${spot.desc}</p>
+                            <p><strong>Pollution Level:</strong> <span class="pollution-level ${spot.level}-pollution">${spot.level.toUpperCase()}</span></p>
+                            <p><strong>Primary Source:</strong> Vehicular Emissions</p>
+                            <div class="pollution-stats">
+                                <div><span>Traffic Congestion:</span> <span>High</span></div>
+                                <div><span>Idling Vehicles:</span> <span>50-100+</span></div>
+                                <div><span>Peak Hours:</span> <span>8-11 AM, 5-8 PM</span></div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    infoWindow.setContent(content);
+                    infoWindow.open(map, marker);
+                });
+            });
+        }
+        
+        // Add industrial emissions to the map
+        function addIndustrialEmissions() {
+            industrialMarkers = industrialData.map((factory) => {
+                // Determine marker color based on category
+                let markerColor;
+                let pollutionLevel;
+                
+                if (factory.category === "Red") {
+                    markerColor = '#9C27B0'; // Purple for very high
+                    pollutionLevel = "very-high";
+                } else if (factory.category === "Orange") {
+                    markerColor = '#F44336'; // Red for high
+                    pollutionLevel = "high";
+                } else {
+                    markerColor = '#4CAF50'; // Green for low
+                    pollutionLevel = "low";
+                }
+                
+                // Calculate total emissions for sizing
+                const totalEmissions = factory.pm25 + factory.so2 + factory.nox;
+                const markerSize = Math.min(10 + Math.log(totalEmissions) * 3, 30);
+                
+                const marker = new google.maps.Marker({
+                    position: { lat: factory.lat, lng: factory.lng },
+                    map: map,
+                    title: factory.name,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: markerSize,
+                        fillColor: markerColor,
+                        fillOpacity: 0.7,
+                        strokeColor: '#FFFFFF',
+                        strokeWeight: 2
+                    },
+                    zIndex: 90
+                });
+                
+                // Store factory data with marker
+                marker.factoryData = factory;
+                marker.pollutionLevel = pollutionLevel;
+                
+                // Add click listener
+                marker.addListener('click', () => {
+                    const content = `
+                        <div class="info-window">
+                            <h4>${factory.name}</h4>
+                            <p><strong>Category:</strong> ${factory.category}</p>
+                            <p><strong>Pollution Level:</strong> <span class="pollution-level ${pollutionLevel}-pollution">${pollutionLevel.replace('-', ' ').toUpperCase()}</span></p>
+                            <div class="pollution-stats">
+                                <div><span>PM2.5:</span> <span>${factory.pm25} kg/day</span></div>
+                                <div><span>SO₂:</span> <span>${factory.so2} kg/day</span></div>
+                                <div><span>NOx:</span> <span>${factory.nox} kg/day</span></div>
+                                <div><strong><span>Total:</span> <span>${totalEmissions.toFixed(1)} kg/day</span></strong></div>
+                            </div>
+                            <p><em>Click other factories to compare emissions</em></p>
+                        </div>
+                    `;
+                    
+                    infoWindow.setContent(content);
+                    infoWindow.open(map, marker);
+                });
+                
+                return marker;
+            });
+        }
+        
+        // Add burning spots to the map
+        function addBurningSpots() {
+            burningMarkers = burningSpots.map((spot) => {
+                // Determine marker size based on intensity
+                const markerSize = spot.intensity * 20;
+                let pollutionLevel;
+                
+                if (spot.intensity > 0.7) {
+                    pollutionLevel = "high";
+                } else if (spot.intensity > 0.4) {
+                    pollutionLevel = "medium";
+                } else {
+                    pollutionLevel = "low";
+                }
+                
+                const marker = new google.maps.Marker({
+                    position: { lat: spot.lat, lng: spot.lng },
+                    map: map,
+                    title: `Burning Spot (${spot.type})`,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: markerSize,
+                        fillColor: '#FF9800',
+                        fillOpacity: 0.6,
+                        strokeColor: '#FFFFFF',
+                        strokeWeight: 1
+                    },
+                    zIndex: 80
+                });
+                
+                // Store burning data with marker
+                marker.burningData = spot;
+                marker.pollutionLevel = pollutionLevel;
+                
+                // Add click listener
+                marker.addListener('click', () => {
+                    const content = `
+                        <div class="info-window">
+                            <h4>${spot.type === 'agricultural' ? 'Agricultural Burning' : 'Garbage Burning'}</h4>
+                            <p><strong>Intensity:</strong> ${(spot.intensity * 100).toFixed(0)}%</p>
+                            <p><strong>Pollution Level:</strong> <span class="pollution-level ${pollutionLevel}-pollution">${pollutionLevel.toUpperCase()}</span></p>
+                            <p><strong>Detected:</strong> ${spot.date}</p>
+                            <div class="pollution-stats">
+                                <div><span>Primary Pollutants:</span> <span>PM2.5, CO</span></div>
+                                <div><span>Affected Area:</span> <span>~${(spot.intensity * 10).toFixed(1)} km²</span></div>
+                                <div><span>Typical Duration:</span> <span>2-6 hours</span></div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    infoWindow.setContent(content);
+                    infoWindow.open(map, marker);
+                });
+                
+                return marker;
+            });
+        }
+        
+        // Set up control event listeners
+        function setupControls() {
+            // Traffic toggle
+            document.getElementById('vehicular-toggle').addEventListener('change', function() {
+                if (this.checked) {
+                    trafficLayer.setMap(map);
+                    updateStatus("Vehicular pollution layer enabled");
+                } else {
+                    trafficLayer.setMap(null);
+                    updateStatus("Vehicular pollution layer disabled");
+                }
+            });
+            
+            // Traffic opacity slider
+            document.getElementById('traffic-opacity').addEventListener('input', function() {
+                const value = this.value;
+                document.getElementById('traffic-opacity-value').textContent = value + '%';
+                
+                // Note: Google Traffic Layer doesn't support opacity control directly
+                // In a real implementation, you might use a custom traffic overlay
+                updateStatus(`Traffic opacity set to ${value}%`);
+            });
+            
+            // Burning toggle
+            document.getElementById('burning-toggle').addEventListener('change', function() {
+                burningMarkers.forEach(marker => {
+                    marker.setMap(this.checked ? map : null);
+                });
+                
+                updateStatus(this.checked ? "Burning spots layer enabled" : "Burning spots layer disabled");
+            });
+            
+            // Burning intensity slider
+            document.getElementById('burning-intensity').addEventListener('input', function() {
+                const value = this.value;
+                let intensityLevel;
+                
+                if (value < 30) intensityLevel = "Low";
+                else if (value < 70) intensityLevel = "Medium";
+                else intensityLevel = "High";
+                
+                document.getElementById('burning-intensity-value').textContent = intensityLevel;
+                
+                // Update marker visibility based on threshold
+                burningMarkers.forEach(marker => {
+                    const shouldShow = marker.burningData.intensity * 100 >= value;
+                    marker.setMap(shouldShow && document.getElementById('burning-toggle').checked ? map : null);
+                });
+                
+                updateStatus(`Showing burning spots with intensity ≥ ${value}%`);
+            });
+            
+            // Industrial toggle
+            document.getElementById('industrial-toggle').addEventListener('change', function() {
+                industrialMarkers.forEach(marker => {
+                    marker.setMap(this.checked ? map : null);
+                });
+                
+                updateStatus(this.checked ? "Industrial emissions layer enabled" : "Industrial emissions layer disabled");
+            });
+            
+            // Emission threshold slider
+            document.getElementById('emission-threshold').addEventListener('input', function() {
+                const value = this.value;
+                let thresholdLevel;
+                
+                if (value < 30) thresholdLevel = "Low";
+                else if (value < 100) thresholdLevel = "Medium";
+                else thresholdLevel = "High";
+                
+                document.getElementById('emission-threshold-value').textContent = thresholdLevel;
+                
+                // Update marker visibility based on threshold
+                industrialMarkers.forEach(marker => {
+                    const totalEmissions = marker.factoryData.pm25 + marker.factoryData.so2 + marker.factoryData.nox;
+                    const shouldShow = totalEmissions >= value;
+                    marker.setMap(shouldShow && document.getElementById('industrial-toggle').checked ? map : null);
+                });
+                
+                updateStatus(`Showing factories with total emissions ≥ ${value} kg/day`);
+            });
+        }
+        
+        // Update status bar
+        function updateStatus(message) {
+            document.getElementById('status-text').textContent = message;
+        }
+        
+        // Handle Google Maps API loading error
+        window.gm_authFailure = function() {
+            document.getElementById('loading-overlay').innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <h3 style="color: #F44336;">Google Maps API Error</h3>
+                    <p>There was an issue loading the map. Please check your API key.</p>
+                    <p>Using a valid Google Maps API key is required for this visualization.</p>
+                </div>
+            `;
+        };
+        
+        // If there's an error loading the Google Maps API
+        setTimeout(() => {
+            if (!window.google || !window.google.maps) {
+                document.getElementById('loading-overlay').innerHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <h3 style="color: #F44336;">Failed to Load Google Maps</h3>
+                        <p>There was an issue loading the Google Maps API.</p>
+                        <p>Please check your internet connection and try again.</p>
+                    </div>
+                `;
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
